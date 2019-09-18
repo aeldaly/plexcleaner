@@ -63,14 +63,11 @@ class Movie(object):
         self.original_file = original_file.encode('UTF-8')
 
         if config.remove_from_path:
-            remove_from_path = r'{0}\/'.format(config.remove_from_path)
+            remove_from_path = r'{0}/'.format(config.remove_from_path)
             self.original_file = self.original_file.replace(remove_from_path, '')
             
         if config.append_to_path:
-            self.original_file = '/{0}{1}'.format(
-                config.append_to_path, self.original_file)
-
-        LOG.debug('original_file is now {0}'.format(self.original_file))
+            self.original_file = '{0}{1}'.format(config.append_to_path, self.original_file)
 
         self.filepath = os.path.dirname(original_file)
         self.basename = os.path.basename(original_file)

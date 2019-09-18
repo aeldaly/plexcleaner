@@ -19,7 +19,7 @@ __author__ = 'Jean-Bernard Ratte - jean.bernard.ratte@unary.ca'
 
 class Configuration(object):
     def __init__(self, plex_home, export, update, jacket, interrupt,
-                 log_level, database_override, no_skip_jacket, no_database_backup):
+                 log_level, database_override, no_skip_jacket, no_database_backup, remove_from_path, append_to_path):
         self.plex_home = plex_home
         self.export = export
         self.update = update
@@ -29,6 +29,8 @@ class Configuration(object):
         self.database_override = database_override
         self.skip_jacket = no_skip_jacket
         self.database_backup = no_database_backup
+        self.remove_from_path = remove_from_path
+        self.append_to_path = append_to_path
 
 
 def has_permission(e):
@@ -104,7 +106,7 @@ def move_media(src, dst, interrupt=False):
         if os.path.isfile(dst):
             LOG.debug(u"File '{0}' already exist, will override if not the same file.".format(src))
 
-        shutil.move(src, dst)
+        shutil.copy(src, dst)
         return True
 
     except (IOError, OSError) as oe:
@@ -200,7 +202,6 @@ def clean(config):
 
             for movie in library:
                 LOG.info(u"Processing: '{0}'".format(movie.basename))
-                next
 
                 if movie.matched:
                     new_path = movie.get_correct_absolute_path(override=config.export)
