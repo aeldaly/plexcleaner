@@ -24,12 +24,16 @@ class Library(object):
             movie = Movie(*row, config=config)
             self._update_library(movie)
 
-        LOG.info("There are {0} different media source".format(len(self.library_paths)))
-        LOG.info("Library size is {0:0.3f} gigabyte".format(self.effective_size * self._B_TO_GB))
+        LOG.info("There are {0} different media source".format(
+            len(self.library_paths)))
+        LOG.info("Library size is {0:0.3f} gigabyte".format(
+            self.effective_size * self._B_TO_GB))
 
     def _update_library(self, movie):
         if int(movie.count) > 1:
-            LOG.warning("Movie {0} has duplicate file. Will not process.".format(movie.original_file))
+            LOG.warning(
+                "Movie {0} has duplicate file. Will not process.".format(
+                    movie.original_file))
             return False
 
         self.library.append(movie)
@@ -42,7 +46,8 @@ class Library(object):
 
         if not movie.exist:
             self.has_missing_file = True
-            LOG.warning("The file {0} is missing from the library".format(movie.original_file))
+            LOG.warning("The file {0} is missing from the library".format(
+                movie.original_file))
 
     def __iter__(self):
         for m in self.library:
@@ -58,16 +63,19 @@ class Movie(object):
     _metadata_path = 'Library/Application Support/Plex Media Server/Metadata/Movies'
     _jacket_path = "{0}/{1}.bundle/Contents/_stored/{2}"
 
-    def __init__(self, mid, title, original_file, year, size, fps, guid, count, jacket, library_path, config):
+    def __init__(self, mid, title, original_file, year, size, fps, guid, count,
+                 jacket, library_path, studio, tags_star, config):
         self.mid = mid
         self.original_file = original_file.encode('UTF-8')
 
         if config.remove_from_path:
             remove_from_path = r'{0}/'.format(config.remove_from_path)
-            self.original_file = self.original_file.replace(remove_from_path, '')
-            
+            self.original_file = self.original_file.replace(
+                remove_from_path, '')
+
         if config.append_to_path:
-            self.original_file = '{0}{1}'.format(config.append_to_path, self.original_file)
+            self.original_file = '{0}{1}'.format(config.append_to_path,
+                                                 self.original_file)
 
         self.filepath = os.path.dirname(original_file)
         self.basename = os.path.basename(original_file)
@@ -76,14 +84,15 @@ class Movie(object):
         try:
             self.title = title.encode('UTF-8')
             self.correct_title = self._clean_filename()
-            self.title_distance = distance.get_jaro_distance(self.title, self.correct_title)
+            self.title_distance = distance.get_jaro_distance(
+                self.title, self.correct_title)
         except distance.JaroDistanceException:
             self.title_distance = 0
 
         self.year = year
         self.size = size
         self.fps = fps
-        self.exist = os.path.exists(original_file)
+        self.exist = os.path.exists(self.original_file)
         self.matched = not guid.startswith('local://')
         self.count = count
 
@@ -91,7 +100,10 @@ class Movie(object):
 
         if self.matched:
             h = hashlib.sha1(guid).hexdigest()
-            self.relative_jacket_path = os.path.join(self._jacket_path.format(h[0], h[1:], jacket[11:]))
+            self.relative_jacket_path = os.path.join(
+                self._jacket_path.format(h[0], h[1:], jacket[11:]))
+            self.studio = studio
+            self.actors = tags_star.split("|")
 
     def _clean_filename(self, replacements=None):
         if not replacements:
@@ -105,16 +117,46 @@ class Movie(object):
         return cleaned
 
     def get_correct_directory(self):
-        return "{0} ({1})".format(self.correct_title, self.year)
+        directory = "{0} ({1})".format(self.correct_title, self.year)
+        if self.studio:
+            directory = "{0} - {1}".format(self.studio, directory)
+
+        return directory
 
     def get_correct_filename(self):
-        return "{0} ({1}){2}".format(self.correct_title, self.year, self.file_ext)
+        filename = ""
+
+        if self.studio:
+            filename = self.studio
+
+        if self.year:
+            if filename:
+                filename = "{0} - {1}".format(filename, self.year)
+
+            else:
+                filename = self.year
+
+        if self.actors:
+            actors_string = self.actors.join(" - ")
+
+            if filename:
+                filename = "{0} - {1}".format(filename, actors_string)
+            else:
+                filename = actors_string
+
+        if filename:
+            filename = "{0} - {1}".format(filename, self.correct_title)
+        else:
+            filename = self.correct_title
+
+        return "{0}{1}".format(filename, self.file_ext)
 
     def get_correct_path(self):
         if self.get_correct_directory() == os.path.basename(self.filepath):
             return self.get_correct_filename()
 
-        return os.path.join(self.get_correct_directory(), self.get_correct_filename())
+        return os.path.join(self.get_correct_directory(),
+                            self.get_correct_filename())
 
     def get_correct_absolute_file(self, override=None):
         if override:
@@ -136,10 +178,12 @@ class Movie(object):
         if not self.matched:
             return None
 
-        return os.path.join(metadata_home, self._metadata_path, self.relative_jacket_path)
+        return os.path.join(metadata_home, self._metadata_path,
+                            self.relative_jacket_path)
 
     def need_update(self, override=None):
-        return not self.get_correct_absolute_file(override=override) == self.original_file
+        return not self.get_correct_absolute_file(
+            override=override) == self.original_file
 
     def __str__(self):
         serialized = dict()
@@ -147,9 +191,13 @@ class Movie(object):
 
         for attribute in attributes:
             if callable(self.__getattribute__(attribute)):
-                serialized.update({attribute.replace('get_', ''): getattr(self, attribute)()})
+                serialized.update({
+                    attribute.replace('get_', ''):
+                    getattr(self, attribute)()
+                })
 
             else:
-                serialized.update({attribute: self.__getattribute__(attribute)})
+                serialized.update(
+                    {attribute: self.__getattribute__(attribute)})
 
         return json.dumps(serialized)

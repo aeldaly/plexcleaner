@@ -1,3 +1,11 @@
 {
+  "[python]": {
+    "editor.formatOnPaste": false,
+  },
+  "editor.formatOnSave": true,
+  "python.autoComplete.addBrackets": true,
+  "python.formatting.provider": "yapf",
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
   "python.pythonPath": "venv/bin/python2.7"
 }
