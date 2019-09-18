@@ -59,3 +59,13 @@ no_database_backup = {
     'is_flag': True,
     'help': 'Prevent application from creating a backup copy of the database.'
 }
+
+remove_from_path = {
+    'type': click.STRING,
+    'help': 'Remove this string from the path of the file'
+}
+
+append_to_path = {
+    'type': click.STRING,
+    'help': 'Add this string to the beginning of the path'
+}

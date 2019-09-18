@@ -161,6 +161,8 @@ def update_database(db, m):
 @click.option('--log-level', **cli.log_level)
 @click.option('--database-override', **cli.database_override)
 @click.option('--no-database-backup', **cli.no_database_backup)
+@click.option('--remove-from-path', **cli.remove_from_path)
+@click.option('--append-to-path', **cli.append_to_path)
 def main(**kwargs):
     config = Configuration(**kwargs)
     clean(config)
@@ -176,7 +178,7 @@ def clean(config):
             if config.database_backup:
                 backup_database(db.filename)
 
-            library = Library(db)
+            library = Library(db, config)
 
             if not len(library):
                 raise PlexCleanerException('Library is empty', severity=logging.WARNING)
@@ -198,6 +200,7 @@ def clean(config):
 
             for movie in library:
                 LOG.info(u"Processing: '{0}'".format(movie.basename))
+                next
 
                 if movie.matched:
                     new_path = movie.get_correct_absolute_path(override=config.export)

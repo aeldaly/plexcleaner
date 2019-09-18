@@ -41,7 +41,7 @@ class Database(object):
             self.filename = db
             self._connection = sqlite3.connect(db)
             self._cursor = self._connection.cursor()
-            self._cursor.execute('ANALYZE')
+            # self._cursor.execute('ANALYZE')
 
         except sqlite3.OperationalError as oe:
             LOG.debug(oe)

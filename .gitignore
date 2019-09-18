@@ -9,3 +9,4 @@ tests/dummy
 *.pyc
 .coverage.*
 .cache
+venv/

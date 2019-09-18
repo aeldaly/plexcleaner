@@ -14,14 +14,14 @@ __author__ = 'Jean-Bernard Ratte - jean.bernard.ratte@unary.ca'
 class Library(object):
     _B_TO_GB = 9.3132257461547852e-10
 
-    def __init__(self, db):
+    def __init__(self, db, config={}):
         self.library = []
         self.library_paths = []
         self.effective_size = 0
         self.has_missing_file = False
 
         for row in db.get_rows():
-            movie = Movie(*row)
+            movie = Movie(*row, config=config)
             self._update_library(movie)
 
         LOG.info("There are {0} different media source".format(len(self.library_paths)))
@@ -58,16 +58,30 @@ class Movie(object):
     _metadata_path = 'Library/Application Support/Plex Media Server/Metadata/Movies'
     _jacket_path = "{0}/{1}.bundle/Contents/_stored/{2}"
 
-    def __init__(self, mid, title, original_file, year, size, fps, guid, count, jacket, library_path):
+    def __init__(self, mid, title, original_file, year, size, fps, guid, count, jacket, library_path, config):
         self.mid = mid
-        self.original_file = original_file
+        self.original_file = original_file.encode('UTF-8')
+
+        if config.remove_from_path:
+            remove_from_path = r'{0}\/'.format(config.remove_from_path)
+            self.original_file = self.original_file.replace(remove_from_path, '')
+            
+        if config.append_to_path:
+            self.original_file = '/{0}{1}'.format(
+                config.append_to_path, self.original_file)
+
+        LOG.debug('original_file is now {0}'.format(self.original_file))
+
         self.filepath = os.path.dirname(original_file)
         self.basename = os.path.basename(original_file)
         self.filename, self.file_ext = os.path.splitext(self.basename)
 
-        self.title = title
-        self.correct_title = self._clean_filename()
-        self.title_distance = distance.get_jaro_distance(self.title, self.correct_title)
+        try:
+            self.title = title.encode('UTF-8')
+            self.correct_title = self._clean_filename()
+            self.title_distance = distance.get_jaro_distance(self.title, self.correct_title)
+        except distance.JaroDistanceException:
+            self.title_distance = 0
 
         self.year = year
         self.size = size
@@ -86,11 +100,12 @@ class Movie(object):
         if not replacements:
             replacements = [('&', 'and')]
 
-        cleaned = unidecode.unidecode(self.title)
+        cleaned = self.title
         for r in replacements:
             cleaned = cleaned.replace(*r)
 
-        return ''.join(char for char in cleaned if char in "-_.()' {0}{1}".format(string.ascii_letters, string.digits))
+        # return ''.join(char for char in cleaned if char in "-_.()' {0}{1}".format(string.ascii_letters, string.digits))
+        return cleaned
 
     def get_correct_directory(self):
         return "{0} ({1})".format(self.correct_title, self.year)
