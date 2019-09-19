@@ -57,6 +57,10 @@ class Library(object):
         return len(self.library)
 
 
+def _str_to_unicode(s):
+    return unicode(s, 'UTF-8')
+
+
 class Movie(object):
     """ Describe movie file as it can be found in the Plex Database
     """
@@ -66,44 +70,50 @@ class Movie(object):
     def __init__(self, mid, title, original_file, year, size, fps, guid, count,
                  jacket, library_path, studio, tags_star, config):
         self.mid = mid
-        self.original_file = original_file.encode('UTF-8')
+        self.original_file = _str_to_unicode(original_file)
 
         if config.remove_from_path:
             remove_from_path = r'{0}/'.format(config.remove_from_path)
-            self.original_file = self.original_file.replace(
-                remove_from_path, '')
+            self.original_file = _str_to_unicode(
+                self.original_file.replace(remove_from_path, ''))
 
         if config.append_to_path:
-            self.original_file = '{0}{1}'.format(config.append_to_path,
-                                                 self.original_file)
+            self.original_file = u'{0}{1}'.format(config.append_to_path,
+                                                  self.original_file)
 
-        self.filepath = os.path.dirname(original_file)
-        self.basename = os.path.basename(original_file)
-        self.filename, self.file_ext = os.path.splitext(self.basename)
+        self.filepath = _str_to_unicode(os.path.dirname(original_file))
+        self.basename = _str_to_unicode(os.path.basename(original_file))
+        self.filename, self.file_ext = [
+            _str_to_unicode(s) for s in os.path.splitext(self.basename)
+        ]
+
+        self.title = _str_to_unicode(title)
+        self.correct_title = self._clean_filename()
 
         try:
-            self.title = title.encode('UTF-8')
-            self.correct_title = self._clean_filename()
             self.title_distance = distance.get_jaro_distance(
                 self.title, self.correct_title)
         except distance.JaroDistanceException:
             self.title_distance = 0
 
-        self.year = year
+        self.year = _str_to_unicode(year)
         self.size = size
         self.fps = fps
         self.exist = os.path.exists(self.original_file)
         self.matched = not guid.startswith('local://')
         self.count = count
 
-        self.library_path = library_path
+        self.library_path = _str_to_unicode(library_path)
 
         if self.matched:
             h = hashlib.sha1(guid).hexdigest()
-            self.relative_jacket_path = os.path.join(
-                self._jacket_path.format(h[0], h[1:], jacket[11:]))
-            self.studio = studio
-            self.actors = tags_star.split("|")
+            self.relative_jacket_path = _str_to_unicode(
+                os.path.join(self._jacket_path.format(h[0], h[1:],
+                                                      jacket[11:])))
+            self.studio = _str_to_unicode(studio)
+            self.actors = [
+                _str_to_unicode(actor) for actor in tags_star.split("|")
+            ]
 
     def _clean_filename(self, replacements=None):
         if not replacements:
@@ -117,69 +127,73 @@ class Movie(object):
         return cleaned
 
     def get_correct_directory(self):
-        directory = "{0} ({1})".format(self.correct_title, self.year)
+        directory = u"{0} ({1})".format(self.correct_title, self.year)
         if self.studio:
-            directory = "{0} - {1}".format(self.studio, directory)
+            directory = u"{0} - {1}".format(self.studio, directory)
 
         return directory
 
     def get_correct_filename(self):
-        filename = ""
+        filename = u""
 
         if self.studio:
             filename = self.studio
 
         if self.year:
             if filename:
-                filename = "{0} - {1}".format(filename, self.year)
+                filename = u"{0} - {1}".format(filename, self.year)
 
             else:
                 filename = self.year
 
         if self.actors:
-            actors_string = self.actors.join(" - ")
+            actors_string = _str_to_unicode(self.actors.join(" - "))
 
             if filename:
-                filename = "{0} - {1}".format(filename, actors_string)
+                filename = u"{0} - {1}".format(filename, actors_string)
             else:
                 filename = actors_string
 
         if filename:
-            filename = "{0} - {1}".format(filename, self.correct_title)
+            filename = u"{0} - {1}".format(filename, self.correct_title)
         else:
             filename = self.correct_title
 
-        return "{0}{1}".format(filename, self.file_ext)
+        return u"{0}{1}".format(filename, self.file_ext)
 
     def get_correct_path(self):
         if self.get_correct_directory() == os.path.basename(self.filepath):
             return self.get_correct_filename()
 
-        return os.path.join(self.get_correct_directory(),
-                            self.get_correct_filename())
+        return _str_to_unicode(
+            os.path.join(self.get_correct_directory(),
+                         self.get_correct_filename()))
 
     def get_correct_absolute_file(self, override=None):
         if override:
-            return os.path.join(override, self.get_correct_path())
+            return _str_to_unicode(
+                os.path.join(override, self.get_correct_path()))
 
-        return os.path.join(self.filepath, self.get_correct_path())
+        return _str_to_unicode(
+            os.path.join(self.filepath, self.get_correct_path()))
 
     def get_correct_absolute_path(self, override=None):
-        directory = "{0} ({1})".format(self.correct_title, self.year)
+        directory = u"{0} ({1})".format(self.correct_title, self.year)
         if override:
-            return os.path.join(override, directory)
+            return _str_to_unicode(os.path.join(override, directory))
 
         if directory == os.path.basename(self.filepath):
             return self.filepath
 
-        return os.path.join(self.filepath, directory)
+        return _str_to_unicode(os.path.join(self.filepath, directory))
 
     def get_metadata_jacket(self, metadata_home='/var/lib/plexmediaserver'):
         if not self.matched:
             return None
 
-        return os.path.join(metadata_home, self._metadata_path,
-                            self.relative_jacket_path)
+        return _str_to_unicode(
+            os.path.join(metadata_home, self._metadata_path,
+                         self.relative_jacket_path))
 
     def need_update(self, override=None):
         return not self.get_correct_absolute_file(

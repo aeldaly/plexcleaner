@@ -2,3 +2,4 @@ click
 pyjarowinkler
 unidecode
 testfixtures
+pytest
