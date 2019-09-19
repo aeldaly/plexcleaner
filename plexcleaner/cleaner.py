@@ -17,6 +17,13 @@ import database
 __author__ = 'Jean-Bernard Ratte - jean.bernard.ratte@unary.ca'
 
 
+def _str_to_unicode(s):
+    try:
+        return unicode(s, 'UTF-8')
+    except TypeError:  # s is already unicode
+        return s
+
+
 class Configuration(object):
     def __init__(self, plex_home, export, update, jacket, interrupt, log_level,
                  database_override, no_skip_jacket, no_database_backup,
@@ -111,6 +118,7 @@ def log_error(err, dst):
 def move_media(src, dst, interrupt=False):
     try:
         LOG.debug(u"Copy file '{0}' to '{1}'".format(src, dst))
+        LOG.debug(u"==== move_media src: {0}, dst: {1}".format(src, dst))
         if os.path.isfile(dst):
             LOG.debug(
                 u"File '{0}' already exist, will override if not the same file."
@@ -143,19 +151,21 @@ def copy_jacket(src, dst, skip):
 
 
 def create_dir(dst):
+    dst = _str_to_unicode(dst)
+
     try:
-        LOG.debug("Creating directory '{0}'.".format(dst))
+        LOG.debug(u"Creating directory '{0}'.".format(dst))
         os.mkdir(dst)
 
         return True
 
     except OSError as e:
         if e.errno == errno.EEXIST:
-            LOG.debug("Directory '{0}' already exist.".format(dst))
+            LOG.debug(u"Directory '{0}' already exist.".format(dst))
             return False
 
         raise PlexCleanerException(
-            "Unable to create directory '{0}' check permissions".format(dst),
+            u"Unable to create directory '{0}' check permissions".format(dst),
             severity=logging.ERROR)
 
 
@@ -225,7 +235,7 @@ def clean(config):
                 has_permission(library.library_paths)
 
             for movie in library:
-                LOG.info(u"Processing: '{0}'".format(movie.basename))
+                LOG.debug(u"Processing: '{0}'".format(movie.basename))
 
                 if movie.matched:
                     new_path = movie.get_correct_absolute_path(
@@ -244,7 +254,7 @@ def clean(config):
                         movie.get_correct_absolute_file(
                             override=config.export), config.interrupt)
                     if not moved:
-                        LOG.info("{0} was not moved to {1}".format(
+                        LOG.info(u"{0} was not moved to {1}".format(
                             movie.correct_title, new_path))
 
                     elif config.update and movie.need_update(

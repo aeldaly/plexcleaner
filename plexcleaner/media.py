@@ -21,6 +21,7 @@ class Library(object):
         self.has_missing_file = False
 
         for row in db.get_rows():
+            LOG.debug(u'=== Library class; db row: {0}'.format(row))
             movie = Movie(*row, config=config)
             self._update_library(movie)
 
@@ -30,10 +31,11 @@ class Library(object):
             self.effective_size * self._B_TO_GB))
 
     def _update_library(self, movie):
+        original_movie_file = _str_to_unicode(movie.original_file)
         if int(movie.count) > 1:
             LOG.warning(
-                "Movie {0} has duplicate file. Will not process.".format(
-                    movie.original_file))
+                u"Movie {0} has duplicate file. Will not process.".format(
+                    original_movie_file))
             return False
 
         self.library.append(movie)
@@ -46,8 +48,8 @@ class Library(object):
 
         if not movie.exist:
             self.has_missing_file = True
-            LOG.warning("The file {0} is missing from the library".format(
-                movie.original_file))
+            LOG.warning(u"The file {0} is missing from the library".format(
+                original_movie_file))
 
     def __iter__(self):
         for m in self.library:
@@ -58,17 +60,37 @@ class Library(object):
 
 
 def _str_to_unicode(s):
-    return unicode(s, 'UTF-8')
+    try:
+        return unicode(s, 'UTF-8')
+    except TypeError:  # s is already unicode
+        return s
+
+
+class NullConfig():
+    remove_from_path = None
+    append_to_path = None
 
 
 class Movie(object):
     """ Describe movie file as it can be found in the Plex Database
     """
-    _metadata_path = 'Library/Application Support/Plex Media Server/Metadata/Movies'
-    _jacket_path = "{0}/{1}.bundle/Contents/_stored/{2}"
+    _metadata_path = u'Library/Application Support/Plex Media Server/Metadata/Movies'
+    _jacket_path = u"{0}/{1}.bundle/Contents/_stored/{2}"
 
-    def __init__(self, mid, title, original_file, year, size, fps, guid, count,
-                 jacket, library_path, studio, tags_star, config):
+    def __init__(self,
+                 mid,
+                 title,
+                 original_file,
+                 year,
+                 size,
+                 fps,
+                 guid,
+                 count,
+                 jacket,
+                 library_path,
+                 studio=None,
+                 tags_star=None,
+                 config=NullConfig):
         self.mid = mid
         self.original_file = _str_to_unicode(original_file)
 
@@ -81,8 +103,8 @@ class Movie(object):
             self.original_file = u'{0}{1}'.format(config.append_to_path,
                                                   self.original_file)
 
-        self.filepath = _str_to_unicode(os.path.dirname(original_file))
-        self.basename = _str_to_unicode(os.path.basename(original_file))
+        self.filepath = _str_to_unicode(os.path.dirname(self.original_file))
+        self.basename = _str_to_unicode(os.path.basename(self.original_file))
         self.filename, self.file_ext = [
             _str_to_unicode(s) for s in os.path.splitext(self.basename)
         ]
@@ -96,7 +118,11 @@ class Movie(object):
         except distance.JaroDistanceException:
             self.title_distance = 0
 
-        self.year = _str_to_unicode(year)
+        if year:
+            self.year = _str_to_unicode(year)
+        else:
+            self.year = None
+
         self.size = size
         self.fps = fps
         self.exist = os.path.exists(self.original_file)
@@ -111,9 +137,15 @@ class Movie(object):
                 os.path.join(self._jacket_path.format(h[0], h[1:],
                                                       jacket[11:])))
             self.studio = _str_to_unicode(studio)
-            self.actors = [
-                _str_to_unicode(actor) for actor in tags_star.split("|")
-            ]
+            # LOG.debug(u'=== Media class; self.studio: {0}'.format(self.studio))
+
+            if tags_star:
+                # LOG.debug(u'=== Media class; tags_star: {0}'.format(tags_star))
+                self.actors = [
+                    _str_to_unicode(actor) for actor in tags_star.split("|")
+                ]
+            else:
+                self.actors = []
 
     def _clean_filename(self, replacements=None):
         if not replacements:
@@ -124,6 +156,7 @@ class Movie(object):
             cleaned = cleaned.replace(*r)
 
         # return ''.join(char for char in cleaned if char in "-_.()' {0}{1}".format(string.ascii_letters, string.digits))
+        # LOG.debug(u'=== Media class; _clean_filename: {0}'.format(cleaned))
         return cleaned
 
     def get_correct_directory(self):
@@ -131,6 +164,8 @@ class Movie(object):
         if self.studio:
             directory = u"{0} - {1}".format(self.studio, directory)
 
+        # LOG.debug(
+        #     u'=== Media class; get_correct_directory: {0}'.format(directory))
         return directory
 
     def get_correct_filename(self):
@@ -159,7 +194,10 @@ class Movie(object):
         else:
             filename = self.correct_title
 
-        return u"{0}{1}".format(filename, self.file_ext)
+        filename = u"{0}{1}".format(filename, self.file_ext)
+        # LOG.debug(
+        #     u'=== Media class; get_correct_filename: {0}'.format(filename))
+        return filename
 
     def get_correct_path(self):
         if self.get_correct_directory() == os.path.basename(self.filepath):

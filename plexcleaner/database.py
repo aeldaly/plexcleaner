@@ -15,21 +15,25 @@ class Database(object):
     _select_movies = (
         'SELECT media_parts.id, metadata_items.title, media_parts.file, metadata_items.year, '
         'media_parts.size, media_items.frames_per_second AS fps, metadata_items.guid, metadata_items.media_item_count, '
-        'metadata_items.user_thumb_url AS jacket, section_locations.root_path AS library_path '
+        'metadata_items.user_thumb_url AS jacket, section_locations.root_path AS library_path, '
+        'metadata_items.studio, metadata_items.tags_star '
         'FROM media_items '
         'JOIN metadata_items ON media_items.metadata_item_id = metadata_items.id '
         'JOIN media_parts ON media_parts.media_item_id = media_items.id '
         'JOIN section_locations ON section_locations.library_section_id = metadata_items.library_section_id '
-        'WHERE metadata_items.metadata_type = 1'
-    )
+        'WHERE metadata_items.metadata_type = 1')
 
-    def __init__(self, metadata_home='/var/lib/plexmediaserver',
-                 database_override=None, database_name='com.plexapp.plugins.library.db'):
+    def __init__(self,
+                 metadata_home='/var/lib/plexmediaserver',
+                 database_override=None,
+                 database_name='com.plexapp.plugins.library.db'):
 
         sqlite = sqlite3.sqlite_version_info[:2]
         if sqlite < (3, 7):
-            raise PlexCleanerException("SQLite bindings are not up to date "
-                                       "(requires 3.7 current is {0}.{1})".format(*sqlite), severity=logging.ERROR)
+            raise PlexCleanerException(
+                "SQLite bindings are not up to date "
+                "(requires 3.7 current is {0}.{1})".format(*sqlite),
+                severity=logging.ERROR)
 
         db = os.path.join(metadata_home, self._database_path, database_name)
         try:
@@ -45,11 +49,14 @@ class Database(object):
 
         except sqlite3.OperationalError as oe:
             LOG.debug(oe)
-            raise PlexCleanerException('Could not connect to Plex database', severity=logging.ERROR)
+            raise PlexCleanerException('Could not connect to Plex database',
+                                       severity=logging.ERROR)
 
         except sqlite3.DatabaseError as de:
             LOG.debug(de.message)
-            raise PlexCleanerException('Could not open Plex database (check permissions)', severity=logging.ERROR)
+            raise PlexCleanerException(
+                'Could not open Plex database (check permissions)',
+                severity=logging.ERROR)
 
     def __enter__(self):
         return self
@@ -66,7 +73,9 @@ class Database(object):
 
         except sqlite3.DatabaseError as de:
             LOG.debug(de.message)
-            raise PlexCleanerException("Unabled to fetch database rows {0}".format(de.message), severity=logging.ERROR)
+            raise PlexCleanerException(
+                "Unabled to fetch database rows {0}".format(de.message),
+                severity=logging.ERROR)
 
     def update_row(self, mid, value):
         LOG.debug("Updating movie '{0}' with '{1}'".format(mid, value))
